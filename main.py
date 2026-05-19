@@ -242,10 +242,11 @@ def _print_table(reports: list[clf.GrahamReport], no_color: bool) -> None:
             color = LABEL_COLOR.get(label, "")
             label = f"{color}{label}{RESET}"
         sell = _fmt_sell(r.sell_signal, no_color)
-        rows.append([r.ticker, price, gn, mos, criteria_str, score_str, label, sell])
+        min_inv = f"R${r.min_investment:,.2f}" if r.min_investment else "—"
+        rows.append([r.ticker, price, gn, mos, criteria_str, score_str, label, sell, min_inv])
 
     headers = ["Ticker", "Price", "Graham No.", "Margin of Safety",
-               "GN/PE/PB/PEPB/DE/CR", "Score", "Label", "Sell?"]
+               "GN/PE/PB/PEPB/DE/CR", "Score", "Label", "Sell?", "Min. Investment (100 shares)"]
     print("\n" + tabulate(rows, headers=headers, tablefmt="rounded_outline"))
     print(f"\n{len(reports)} stock(s) shown.")
 

@@ -73,6 +73,7 @@ def summary(reports: list[GrahamReport], path: str,
             "Ticker", "Company", "Sector", "Label", "Score",
             "Price (R$)", "Graham Number (R$)", "Intrinsic Value (R$)",
             "Margin of Safety (%)", "Adj. Graham Number (R$)",
+            "Min. Investment (R$)",
             "EPS (R$)", "BVPS (R$)", "P/E", "P/B", "Current Ratio",
             "Total Assets (M R$)", "Total Liabilities (M R$)",
             "Current Assets (M R$)", "Current Liabilities (M R$)",
@@ -89,6 +90,7 @@ def summary(reports: list[GrahamReport], path: str,
                 f"{r.score}/{r.max_score}",
                 _r(r.price), _r(r.graham_number), _r(r.intrinsic_value),
                 _pct(r.margin_of_safety), _r(r.adjusted_graham_number),
+                _r(r.min_investment),
                 _r(r.eps), _r(r.bvps), _r(r.pe), _r(r.pb), _r(r.current_ratio),
                 _r(r.total_assets_m), _r(r.total_liabilities_m),
                 _r(r.current_assets_m), _r(r.current_liabilities_m),
@@ -142,6 +144,7 @@ def _detail_rows(r: GrahamReport) -> list[list]:
     add("Company Info", "Last Updated", r.last_updated)
 
     add("Financial Inputs (TTM)", "Current Price (R$)", _r(r.price))
+    add("Financial Inputs (TTM)", "Min. Investment (R$)", _r(r.min_investment), "Price × 100 shares (B3 standard lot)")
     add("Financial Inputs (TTM)", "EPS (R$)", _r(r.eps))
     add("Financial Inputs (TTM)", "Book Value Per Share (R$)", _r(r.bvps))
     add("Financial Inputs (TTM)", "Total Assets (M R$)", _r(r.total_assets_m))

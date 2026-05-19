@@ -50,6 +50,7 @@ class GrahamReport:
     graham_number: Optional[float]
     intrinsic_value: Optional[float]      # = graham_number (base estimate)
     margin_of_safety: Optional[float]     # (GN - price) / GN
+    min_investment: Optional[float]       # price × 100 (B3 standard lot)
 
     # Dividend history
     dividend_history: list[DividendYear] = field(default_factory=list)
@@ -79,6 +80,8 @@ class GrahamReport:
 
 LABEL_ORDER = ["Strong Buy", "Buy", "Hold", "Overvalued", "Avoid", "Inconclusive", "Insufficient Data"]
 
+_B3_LOT = 100  # standard lot size (lote padrão) on B3 for all equities
+
 
 def classify(q: RawQuote) -> GrahamReport:
     ipca_rate = _ipca_module.fetch_rate()
@@ -98,6 +101,7 @@ def classify(q: RawQuote) -> GrahamReport:
     real_ey = (q.eps / q.price - ipca_rate) if (q.eps and q.price) else None
 
     div_history, avg_yield = _dividend_summary(q)
+    min_investment = q.price * _B3_LOT if q.price else None
 
     # ── criteria ──────────────────────────────────────────────────────────────
     pepb = (pe * pb) if (pe and pb) else None
@@ -135,6 +139,7 @@ def classify(q: RawQuote) -> GrahamReport:
         graham_number=gn,
         intrinsic_value=gn,
         margin_of_safety=mos,
+        min_investment=min_investment,
         dividend_history=div_history,
         avg_div_yield_3y=avg_yield,
         ipca_rate=ipca_rate,
