@@ -14,10 +14,8 @@ from datetime import datetime
 from typing import Optional
 
 from brapi import RawQuote
-from config import (
-    CR_MIN, DE_MAX, DIVIDEND_YEARS, IPCA_RATE,
-    PE_MAX, PB_MAX, PEPB_MAX,
-)
+from config import CR_MIN, DE_MAX, DIVIDEND_YEARS, PE_MAX, PB_MAX, PEPB_MAX
+import ipca as _ipca_module
 
 
 @dataclass
@@ -58,7 +56,7 @@ class GrahamReport:
     avg_div_yield_3y: Optional[float] = None
 
     # Inflation adjustments (IPCA)
-    ipca_rate: float = IPCA_RATE
+    ipca_rate: float = 0.0
     real_earnings_yield: Optional[float] = None   # EPS/price - IPCA
     adjusted_graham_number: Optional[float] = None  # GN × (1 + IPCA)
 
@@ -83,6 +81,8 @@ LABEL_ORDER = ["Strong Buy", "Buy", "Hold", "Overvalued", "Avoid", "Inconclusive
 
 
 def classify(q: RawQuote) -> GrahamReport:
+    ipca_rate = _ipca_module.fetch_rate()
+
     gn = _graham_number(q.eps, q.bvps)
     mos = (gn - q.price) / gn if (gn and q.price) else None
 
@@ -94,8 +94,8 @@ def classify(q: RawQuote) -> GrahamReport:
     )
     de = _debt_equity(q)
 
-    adj_gn = gn * (1 + IPCA_RATE) if gn else None
-    real_ey = (q.eps / q.price - IPCA_RATE) if (q.eps and q.price) else None
+    adj_gn = gn * (1 + ipca_rate) if gn else None
+    real_ey = (q.eps / q.price - ipca_rate) if (q.eps and q.price) else None
 
     div_history, avg_yield = _dividend_summary(q)
 
@@ -137,7 +137,7 @@ def classify(q: RawQuote) -> GrahamReport:
         margin_of_safety=mos,
         dividend_history=div_history,
         avg_div_yield_3y=avg_yield,
-        ipca_rate=IPCA_RATE,
+        ipca_rate=ipca_rate,
         real_earnings_yield=real_ey,
         adjusted_graham_number=adj_gn,
         criteria=criteria,

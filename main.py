@@ -26,6 +26,7 @@ import classifier as clf
 import cvm as cvm_module
 import exporter
 import fundamentus
+import ipca as ipca_module
 import menu as interactive_menu
 import statusinvest as si_module
 import validator as val
