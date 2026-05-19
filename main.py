@@ -249,6 +249,40 @@ def _print_table(reports: list[clf.GrahamReport], no_color: bool) -> None:
                "GN/PE/PB/PEPB/DE/CR", "Score", "Label", "Sell?", "Min. Investment (100 shares)"]
     print("\n" + tabulate(rows, headers=headers, tablefmt="rounded_outline"))
     print(f"\n{len(reports)} stock(s) shown.")
+    _print_legend()
+
+
+def _print_legend() -> None:
+    print("""
+─── Graham Criteria Legend ──────────────────────────────────────────────────────
+  GN   Graham Number      Price < √(22.5 × EPS × BVPS)
+                          The stock trades below Graham's estimate of intrinsic
+                          value. Core criterion — without it the label is
+                          Inconclusive regardless of other scores.
+
+  PE   Price / Earnings   P/E ≤ 15
+                          Earnings are not overpriced. Graham viewed P/E > 15
+                          as speculative. Lower is more conservative.
+
+  PB   Price / Book       P/B ≤ 1.5
+                          Price is close to or below net asset value.
+                          Indicates asset-backed pricing with limited downside.
+
+  PEPB P/E × P/B         P/E × P/B ≤ 22.5
+                          Combined multiplier allowing a trade-off: a stock with
+                          P/E 12 and P/B 1.9 passes even though P/B alone fails.
+                          Graham's own formula for balanced valuation.
+
+  DE   Debt / Equity      D/E ≤ 1.0
+                          Total liabilities do not exceed shareholders' equity.
+                          Low leverage reduces bankruptcy risk in downturns.
+
+  CR   Current Ratio      C/R ≥ 2.0
+                          Current assets are at least twice current liabilities.
+                          Confirms the company can meet short-term obligations.
+
+  ✓ = passes threshold   ✗ = fails threshold   ? = data unavailable
+────────────────────────────────────────────────────────────────────────────────""")
 
 
 def _fmt_criteria(r: clf.GrahamReport) -> str:
