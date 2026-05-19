@@ -1,0 +1,27 @@
+{
+  "_help": {
+    "vpa": "Valor Patrimonial por A\u00e7\u00e3o \u2014 search '<TICKER> VPA' on fundamentus.com.br, statusinvest.com.br or investidor10.com.br",
+    "lpa": "Lucro por A\u00e7\u00e3o (EPS) \u2014 override only if Brapi returns wrong value",
+    "updated": "date you last updated this entry (YYYY-MM-DD)"
+  },
+  "BBAS3": {
+    "vpa": null,
+    "updated": "2026-05-19",
+    "_source": "https://fundamentus.com.br/detalhes.php?papel=BBAS3"
+  },
+  "ITUB4": {
+    "vpa": null,
+    "updated": "YYYY-MM-DD",
+    "_source": "https://fundamentus.com.br/detalhes.php?papel=ITUB4"
+  },
+  "BBDC4": {
+    "vpa": null,
+    "updated": "YYYY-MM-DD",
+    "_source": "https://fundamentus.com.br/detalhes.php?papel=BBDC4"
+  },
+  "SANB11": {
+    "vpa": null,
+    "updated": "YYYY-MM-DD",
+    "_source": "https://fundamentus.com.br/detalhes.php?papel=SANB11"
+  }
+}
