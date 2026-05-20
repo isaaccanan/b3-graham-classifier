@@ -223,9 +223,8 @@ def _yn(val: bool | None) -> str:
 #   U  Min. Investment   Z  DE Pass
 #                        AA CR Pass
 #
-# Formulas use English locale (comma as argument separator).
-# If your Google Sheet uses a non-English locale, go to
-# File → Settings → General → Locale and set it to United States.
+# Formulas use Brazilian Portuguese locale (semicolon as argument separator),
+# matching the default locale for Brazilian Google Sheets accounts.
 
 _FORMULA_HEADERS = [
     "Ticker", "Company", "Sector", "Last Updated",
@@ -277,37 +276,37 @@ def _formula_row(r: GrahamReport, row: int) -> list:
         _rv(r.current_liabilities_m),
         _rv(r.shares_outstanding_m),
         # ── Graham Number: √(22.5 × EPS × BVPS), requires positive product ──
-        f'=IFERROR(IF(F{n}*G{n}>0,SQRT(22.5*F{n}*G{n}),""),"")' ,
+        f'=IFERROR(IF(F{n}*G{n}>0;SQRT(22.5*F{n}*G{n});"");"")' ,
         # ── Margin of Safety: (GN − Price) / GN ──
-        f'=IFERROR((Q{n}-E{n})/Q{n},"")' ,
+        f'=IFERROR((Q{n}-E{n})/Q{n};"")' ,
         # ── Adjusted Graham Number: GN × (1 + IPCA) ──
-        f'=IFERROR(Q{n}*(1+J{n}),"")' ,
+        f'=IFERROR(Q{n}*(1+J{n});"")' ,
         # ── Real Earnings Yield: EPS/Price − IPCA ──
-        f'=IFERROR(IF(OR(F{n}="",E{n}=""),"",F{n}/E{n}-J{n}),"")' ,
+        f'=IFERROR(IF(OR(F{n}="";E{n}="");"";F{n}/E{n}-J{n});"")' ,
         # ── Minimum Investment: Price × 100 shares (B3 standard lot) ──
-        f'=IF(E{n}="","",E{n}*100)' ,
+        f'=IF(E{n}="";"";E{n}*100)' ,
         # ── Criteria ──
-        f'=IFERROR(IF(OR(E{n}="",Q{n}=""),"?",IF(E{n}<Q{n},"YES","NO")),"?")' ,
-        f'=IFERROR(IF(OR(E{n}="",F{n}="",F{n}=0),"?",IF(E{n}/F{n}<=15,"YES","NO")),"?")' ,
-        f'=IFERROR(IF(OR(E{n}="",G{n}="",G{n}=0),"?",IF(E{n}/G{n}<=1.5,"YES","NO")),"?")' ,
-        f'=IFERROR(IF(OR(E{n}="",F{n}="",G{n}="",F{n}=0,G{n}=0),"?",IF((E{n}/F{n})*(E{n}/G{n})<=22.5,"YES","NO")),"?")' ,
-        f'=IFERROR(IF(I{n}="","?",IF(I{n}<=1,"YES","NO")),"?")' ,
-        f'=IFERROR(IF(H{n}="","?",IF(H{n}>=2,"YES","NO")),"?")' ,
+        f'=IFERROR(IF(OR(E{n}="";Q{n}="");"?";IF(E{n}<Q{n};"YES";"NO"));"?")' ,
+        f'=IFERROR(IF(OR(E{n}="";F{n}="";F{n}=0);"?";IF(E{n}/F{n}<=15;"YES";"NO"));"?")' ,
+        f'=IFERROR(IF(OR(E{n}="";G{n}="";G{n}=0);"?";IF(E{n}/G{n}<=1.5;"YES";"NO"));"?")' ,
+        f'=IFERROR(IF(OR(E{n}="";F{n}="";G{n}="";F{n}=0;G{n}=0);"?";IF((E{n}/F{n})*(E{n}/G{n})<=22.5;"YES";"NO"));"?")' ,
+        f'=IFERROR(IF(I{n}="";"?";IF(I{n}<=1;"YES";"NO"));"?")' ,
+        f'=IFERROR(IF(H{n}="";"?";IF(H{n}>=2;"YES";"NO"));"?")' ,
         # ── Score: count YES / count evaluated criteria ──
-        f'=COUNTIF(V{n}:AA{n},"YES")&"/"&(6-COUNTIF(V{n}:AA{n},"?"))' ,
+        f'=COUNTIF(V{n}:AA{n};"YES")&"/"&(6-COUNTIF(V{n}:AA{n};"?"))' ,
         # ── Label: mirrors the Python _label() logic ──
         (
             f'=IFERROR('
-            f'IF((6-COUNTIF(V{n}:AA{n},"?"))=0,"Insufficient Data",'
-            f'IF(Q{n}="","Inconclusive",'
-            f'IF(AND(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.83,V{n}="YES"),"Strong Buy",'
-            f'IF(AND(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.66,V{n}<>"NO"),"Buy",'
-            f'IF(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.5,"Hold",'
-            f'IF(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.33,"Overvalued","Avoid")'
-            f'))))),IF((6-COUNTIF(V{n}:AA{n},"?"))=0,"Insufficient Data","Inconclusive"))'
+            f'IF((6-COUNTIF(V{n}:AA{n};"?"))=0;"Insufficient Data";'
+            f'IF(Q{n}="";"Inconclusive";'
+            f'IF(AND(COUNTIF(V{n}:AA{n};"YES")/(6-COUNTIF(V{n}:AA{n};"?"))>=0.83;V{n}="YES");"Strong Buy";'
+            f'IF(AND(COUNTIF(V{n}:AA{n};"YES")/(6-COUNTIF(V{n}:AA{n};"?"))>=0.66;V{n}<>"NO");"Buy";'
+            f'IF(COUNTIF(V{n}:AA{n};"YES")/(6-COUNTIF(V{n}:AA{n};"?"))>=0.5;"Hold";'
+            f'IF(COUNTIF(V{n}:AA{n};"YES")/(6-COUNTIF(V{n}:AA{n};"?"))>=0.33;"Overvalued";"Avoid")'
+            f')))))));IF((6-COUNTIF(V{n}:AA{n};"?"))=0;"Insufficient Data";"Inconclusive"))'
         ),
         # ── Sell Signal: price ≥ Graham Number → MoS ≤ 0 ──
-        f'=IFERROR(IF(R{n}<=0,"YES","NO"),"?")' ,
+        f'=IFERROR(IF(R{n}<=0;"YES";"NO");"?")' ,
     ]
 
 

@@ -192,9 +192,8 @@ def run(tickers: list[str], label_filter: str | None,
         if export_format in ("google", "google-formulas"):
             print("Google Sheets: File → Import → Upload → select file → Replace spreadsheet")
         if export_format == "google-formulas":
-            print("Tip: edit EPS (F), BVPS (G), Current Ratio (H), or D/E (I) cells to")
-            print("     recalculate Graham Number, Score, Label, and all criteria live.")
-            print("     Requires English locale: File → Settings → General → Locale → United States")
+            print("Tip: edit EPS (col F), BVPS (col G), Current Ratio (col H), or D/E (col I)")
+            print("     to recalculate Graham Number, Score, Label, and all criteria live.")
         log.info("Summary CSV exported → %s [%s]", out, export_format)
 
     if detail_path:
