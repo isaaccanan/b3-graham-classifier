@@ -1,11 +1,14 @@
-"""Tests for exporter.py — CSV format, helpers, and sell signal column."""
+"""Tests for exporter.py — CSV format, helpers, sell signal, and formula export."""
 
 import csv
 import io
 import pytest
 from unittest.mock import patch
 
-from exporter import _r, _pct, _yn, summary, detail, format_description, FORMATS
+from exporter import (
+    _r, _pct, _yn, _rv, _formula_row, _FORMULA_HEADERS,
+    summary, detail, summary_formulas, format_description, FORMATS,
+)
 from classifier import GrahamReport
 
 
@@ -138,6 +141,202 @@ class TestSummaryCSV:
             header = f.readline()
         assert "," in header
         assert ";" not in header
+
+
+class TestFormulaExport:
+    """Validates the google-formulas export — structure, cell types, and formula correctness."""
+
+    def _parse(self, reports) -> tuple[list, list[dict]]:
+        """Returns (raw_rows, dict_rows) from the formula CSV."""
+        path = "/tmp/test_formulas.csv"
+        summary_formulas(reports, path)
+        with open(path, encoding="utf-8-sig") as f:
+            raw = list(csv.reader(f, delimiter=";"))
+        with open(path, encoding="utf-8-sig") as f:
+            dicts = list(csv.DictReader(f, delimiter=";"))
+        return raw, dicts
+
+    # ── structure ─────────────────────────────────────────────────────────────
+
+    def test_header_count_matches_formula_headers(self):
+        raw, _ = self._parse([_make_report()])
+        assert len(raw[0]) == len(_FORMULA_HEADERS)
+
+    def test_one_data_row_per_report(self):
+        raw, _ = self._parse([_make_report(), _make_report(ticker="VALE3")])
+        assert len(raw) == 3  # 1 header + 2 data
+
+    def test_data_row_column_count_matches_header(self):
+        raw, _ = self._parse([_make_report()])
+        assert len(raw[1]) == len(raw[0])
+
+    def test_file_uses_semicolon_separator(self):
+        path = "/tmp/test_formulas_sep.csv"
+        summary_formulas([_make_report()], path)
+        with open(path, encoding="utf-8-sig") as f:
+            first_line = f.readline()
+        assert ";" in first_line
+
+    def test_file_has_utf8_bom(self):
+        path = "/tmp/test_formulas_bom.csv"
+        summary_formulas([_make_report()], path)
+        with open(path, "rb") as f:
+            assert f.read(3) == b"\xef\xbb\xbf"
+
+    # ── input columns are plain values ────────────────────────────────────────
+
+    def test_ticker_is_plain_value(self):
+        _, rows = self._parse([_make_report(ticker="PETR4")])
+        assert rows[0]["Ticker"] == "PETR4"
+
+    def test_price_is_plain_number(self):
+        _, rows = self._parse([_make_report(price=42.5)])
+        assert not rows[0]["Price (R$)"].startswith("=")
+        assert float(rows[0]["Price (R$)"]) == pytest.approx(42.5)
+
+    def test_eps_is_plain_number(self):
+        _, rows = self._parse([_make_report(eps=3.14)])
+        assert not rows[0]["EPS (R$)"].startswith("=")
+
+    def test_bvps_is_plain_number(self):
+        _, rows = self._parse([_make_report(bvps=12.0)])
+        assert not rows[0]["BVPS (R$)"].startswith("=")
+
+    def test_missing_eps_is_blank(self):
+        _, rows = self._parse([_make_report(eps=None)])
+        assert rows[0]["EPS (R$)"] == ""
+
+    def test_missing_bvps_is_blank(self):
+        _, rows = self._parse([_make_report(bvps=None)])
+        assert rows[0]["BVPS (R$)"] == ""
+
+    def test_missing_current_ratio_is_blank(self):
+        _, rows = self._parse([_make_report(current_ratio=None)])
+        assert rows[0]["Current Ratio"] == ""
+
+    def test_missing_de_is_blank(self):
+        _, rows = self._parse([_make_report(debt_to_equity=None)])
+        assert rows[0]["D/E"] == ""
+
+    # ── formula columns start with = ──────────────────────────────────────────
+
+    def test_graham_number_is_formula(self):
+        _, rows = self._parse([_make_report()])
+        assert rows[0]["Graham Number (R$)"].startswith("=")
+
+    def test_margin_of_safety_is_formula(self):
+        _, rows = self._parse([_make_report()])
+        assert rows[0]["Margin of Safety"].startswith("=")
+
+    def test_adj_graham_number_is_formula(self):
+        _, rows = self._parse([_make_report()])
+        assert rows[0]["Adj. Graham Number (R$)"].startswith("=")
+
+    def test_min_investment_is_formula(self):
+        _, rows = self._parse([_make_report()])
+        assert rows[0]["Min. Investment (R$)"].startswith("=")
+
+    def test_all_criteria_are_formulas(self):
+        _, rows = self._parse([_make_report()])
+        for col in ("GN Pass", "PE Pass", "PB Pass", "PEPB Pass", "DE Pass", "CR Pass"):
+            assert rows[0][col].startswith("="), f"{col} is not a formula"
+
+    def test_score_is_formula(self):
+        _, rows = self._parse([_make_report()])
+        assert rows[0]["Score"].startswith("=")
+
+    def test_label_is_formula(self):
+        _, rows = self._parse([_make_report()])
+        assert rows[0]["Label"].startswith("=")
+
+    def test_sell_signal_is_formula(self):
+        _, rows = self._parse([_make_report()])
+        assert rows[0]["Sell Signal"].startswith("=")
+
+    # ── formula correctness ───────────────────────────────────────────────────
+
+    def test_graham_number_formula_uses_semicolons(self):
+        _, rows = self._parse([_make_report()])
+        gn = rows[0]["Graham Number (R$)"]
+        assert ";" in gn
+
+    def test_graham_number_formula_references_f_and_g(self):
+        _, rows = self._parse([_make_report()])
+        gn = rows[0]["Graham Number (R$)"]
+        assert "F2" in gn and "G2" in gn
+
+    def test_graham_number_formula_contains_sqrt_22_5(self):
+        _, rows = self._parse([_make_report()])
+        gn = rows[0]["Graham Number (R$)"]
+        assert "SQRT(22.5" in gn
+
+    def test_margin_of_safety_references_q_and_e(self):
+        _, rows = self._parse([_make_report()])
+        mos = rows[0]["Margin of Safety"]
+        assert "Q2" in mos and "E2" in mos
+
+    def test_pe_pass_threshold_is_15(self):
+        _, rows = self._parse([_make_report()])
+        assert "<=15" in rows[0]["PE Pass"]
+
+    def test_pb_pass_threshold_is_1_5(self):
+        _, rows = self._parse([_make_report()])
+        assert "<=1.5" in rows[0]["PB Pass"]
+
+    def test_de_pass_threshold_is_1(self):
+        _, rows = self._parse([_make_report()])
+        assert "<=1" in rows[0]["DE Pass"]
+
+    def test_cr_pass_threshold_is_2(self):
+        _, rows = self._parse([_make_report()])
+        assert ">=2" in rows[0]["CR Pass"]
+
+    def test_score_formula_counts_yes_and_unknowns(self):
+        _, rows = self._parse([_make_report()])
+        score = rows[0]["Score"]
+        assert 'COUNTIF' in score
+        assert '"YES"' in score
+        assert '"?"' in score
+
+    def test_sell_signal_references_margin_of_safety_column(self):
+        _, rows = self._parse([_make_report()])
+        assert "R2" in rows[0]["Sell Signal"]
+
+    def test_label_contains_all_graham_labels(self):
+        _, rows = self._parse([_make_report()])
+        label = rows[0]["Label"]
+        for lbl in ("Strong Buy", "Buy", "Hold", "Overvalued", "Avoid",
+                    "Inconclusive", "Insufficient Data"):
+            assert lbl in label, f"Label formula missing: {lbl}"
+
+    # ── row numbers increment correctly ───────────────────────────────────────
+
+    def test_second_row_uses_row_3_references(self):
+        raw, _ = self._parse([_make_report(), _make_report(ticker="VALE3")])
+        # row index 2 = third CSV line (row 1 header, row 2 first data, row 3 second data)
+        second_data = raw[2]
+        gn_formula = second_data[_FORMULA_HEADERS.index("Graham Number (R$)")]
+        assert "F3" in gn_formula and "G3" in gn_formula
+
+    def test_row_references_do_not_bleed_between_rows(self):
+        raw, _ = self._parse([_make_report(), _make_report(ticker="VALE3")])
+        first_gn  = raw[1][_FORMULA_HEADERS.index("Graham Number (R$)")]
+        second_gn = raw[2][_FORMULA_HEADERS.index("Graham Number (R$)")]
+        assert "F2" in first_gn  and "F3" not in first_gn
+        assert "F3" in second_gn and "F2" not in second_gn
+
+    # ── _rv helper ────────────────────────────────────────────────────────────
+
+    def test_rv_none_returns_empty(self):
+        assert _rv(None) == ""
+
+    def test_rv_float_returns_string(self):
+        assert _rv(42.5) == "42.5"
+
+    def test_rv_small_float_no_scientific_notation(self):
+        result = _rv(0.0439)
+        assert "e" not in result.lower()
+        assert float(result) == pytest.approx(0.0439)
 
 
 class TestDetailCSV:
