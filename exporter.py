@@ -56,6 +56,13 @@ FORMATS: dict[str, ExportFormat] = {
         extension=".csv",
         description="Microsoft Excel",
     ),
+    "google-formulas": ExportFormat(
+        prefix="google-formulas",
+        separator=";",
+        encoding="utf-8-sig",
+        extension=".csv",
+        description="Google Sheets with live Graham formulas",
+    ),
 }
 
 DEFAULT_FORMAT = "google"
@@ -192,3 +199,118 @@ def _yn(val: bool | None) -> str:
     if val is None:
         return "?"
     return "YES" if val else "NO"
+
+
+# ── Google Sheets formula export ──────────────────────────────────────────────
+#
+# Column layout (A–AD, row 1 = headers, data from row 2):
+#
+#  INPUT  (plain values — user can edit to recalculate)
+#   A  Ticker            E  Price (R$)       I  D/E
+#   B  Company           F  EPS (R$)         J  IPCA Rate
+#   C  Sector            G  BVPS (R$)        K  Avg Div Yield 3Y
+#   D  Last Updated      H  Current Ratio    L  Total Assets (M R$)
+#                                             M  Total Liab (M R$)
+#                                             N  Current Assets (M R$)
+#                                             O  Current Liab (M R$)
+#                                             P  Shares Outstanding (M)
+#
+#  FORMULA  (recalculate automatically when inputs change)
+#   Q  Graham Number     V  GN Pass          AB  Score
+#   R  Margin of Safety  W  PE Pass          AC  Label
+#   S  Adj. Graham No.   X  PB Pass          AD  Sell Signal
+#   T  Real EY           Y  PEPB Pass
+#   U  Min. Investment   Z  DE Pass
+#                        AA CR Pass
+#
+# Formulas use English locale (comma as argument separator).
+# If your Google Sheet uses a non-English locale, go to
+# File → Settings → General → Locale and set it to United States.
+
+_FORMULA_HEADERS = [
+    "Ticker", "Company", "Sector", "Last Updated",
+    "Price (R$)", "EPS (R$)", "BVPS (R$)", "Current Ratio", "D/E",
+    "IPCA Rate", "Avg Div Yield 3Y", "Total Assets (M R$)",
+    "Total Liab (M R$)", "Current Assets (M R$)", "Current Liab (M R$)",
+    "Shares Outstanding (M)",
+    # ── formulas ──
+    "Graham Number (R$)", "Margin of Safety", "Adj. Graham Number (R$)",
+    "Real Earnings Yield", "Min. Investment (R$)",
+    "GN Pass", "PE Pass", "PB Pass", "PEPB Pass", "DE Pass", "CR Pass",
+    "Score", "Label", "Sell Signal",
+]
+
+
+def summary_formulas(reports: list[GrahamReport], path: str) -> None:
+    """Google Sheets CSV where calculated fields are live Graham formulas.
+
+    Input columns (price, EPS, BVPS, ratios) are plain values the user can
+    edit. Formula columns (Graham Number, Score, Label, etc.) recalculate
+    automatically when any input changes.
+    """
+    f = _get_format("google-formulas")
+    with open(path, "w", newline="", encoding=f.encoding) as out:
+        writer = csv.writer(out, delimiter=f.separator, quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(_FORMULA_HEADERS)
+        for i, r in enumerate(reports, start=2):
+            writer.writerow(_formula_row(r, i))
+
+
+def _formula_row(r: GrahamReport, row: int) -> list:
+    n = row
+    # Input values — empty string for missing (blank cell in Sheets)
+    return [
+        r.ticker,
+        r.company_name,
+        r.sector,
+        r.last_updated,
+        _rv(r.price),
+        _rv(r.eps),
+        _rv(r.bvps),
+        _rv(r.current_ratio),
+        _rv(r.debt_to_equity),
+        _rv(r.ipca_rate),
+        _rv(r.avg_div_yield_3y),
+        _rv(r.total_assets_m),
+        _rv(r.total_liabilities_m),
+        _rv(r.current_assets_m),
+        _rv(r.current_liabilities_m),
+        _rv(r.shares_outstanding_m),
+        # ── Graham Number: √(22.5 × EPS × BVPS), requires positive product ──
+        f'=IFERROR(IF(F{n}*G{n}>0,SQRT(22.5*F{n}*G{n}),""),"")' ,
+        # ── Margin of Safety: (GN − Price) / GN ──
+        f'=IFERROR((Q{n}-E{n})/Q{n},"")' ,
+        # ── Adjusted Graham Number: GN × (1 + IPCA) ──
+        f'=IFERROR(Q{n}*(1+J{n}),"")' ,
+        # ── Real Earnings Yield: EPS/Price − IPCA ──
+        f'=IFERROR(IF(OR(F{n}="",E{n}=""),"",F{n}/E{n}-J{n}),"")' ,
+        # ── Minimum Investment: Price × 100 shares (B3 standard lot) ──
+        f'=IF(E{n}="","",E{n}*100)' ,
+        # ── Criteria ──
+        f'=IFERROR(IF(OR(E{n}="",Q{n}=""),"?",IF(E{n}<Q{n},"YES","NO")),"?")' ,
+        f'=IFERROR(IF(OR(E{n}="",F{n}="",F{n}=0),"?",IF(E{n}/F{n}<=15,"YES","NO")),"?")' ,
+        f'=IFERROR(IF(OR(E{n}="",G{n}="",G{n}=0),"?",IF(E{n}/G{n}<=1.5,"YES","NO")),"?")' ,
+        f'=IFERROR(IF(OR(E{n}="",F{n}="",G{n}="",F{n}=0,G{n}=0),"?",IF((E{n}/F{n})*(E{n}/G{n})<=22.5,"YES","NO")),"?")' ,
+        f'=IFERROR(IF(I{n}="","?",IF(I{n}<=1,"YES","NO")),"?")' ,
+        f'=IFERROR(IF(H{n}="","?",IF(H{n}>=2,"YES","NO")),"?")' ,
+        # ── Score: count YES / count evaluated criteria ──
+        f'=COUNTIF(V{n}:AA{n},"YES")&"/"&(6-COUNTIF(V{n}:AA{n},"?"))' ,
+        # ── Label: mirrors the Python _label() logic ──
+        (
+            f'=IFERROR('
+            f'IF((6-COUNTIF(V{n}:AA{n},"?"))=0,"Insufficient Data",'
+            f'IF(Q{n}="","Inconclusive",'
+            f'IF(AND(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.83,V{n}="YES"),"Strong Buy",'
+            f'IF(AND(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.66,V{n}<>"NO"),"Buy",'
+            f'IF(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.5,"Hold",'
+            f'IF(COUNTIF(V{n}:AA{n},"YES")/(6-COUNTIF(V{n}:AA{n},"?"))>=0.33,"Overvalued","Avoid")'
+            f'))))),IF((6-COUNTIF(V{n}:AA{n},"?"))=0,"Insufficient Data","Inconclusive"))'
+        ),
+        # ── Sell Signal: price ≥ Graham Number → MoS ≤ 0 ──
+        f'=IFERROR(IF(R{n}<=0,"YES","NO"),"?")' ,
+    ]
+
+
+def _rv(val) -> str:
+    """Plain numeric value for formula export — empty string for None."""
+    return "" if val is None else f"{val:.6g}"

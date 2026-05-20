@@ -84,6 +84,7 @@ def _make_report(**kwargs) -> GrahamReport:
         graham_number=21.2, intrinsic_value=21.2,
         margin_of_safety=-1.17,   # price > GN → sell signal
         min_investment=4600.0,    # 46.0 × 100 B3 standard lot
+        debt_to_equity=0.45,
         dividend_history=[], avg_div_yield_3y=None,
         ipca_rate=0.045, real_earnings_yield=None,
         adjusted_graham_number=22.15,

@@ -47,6 +47,7 @@ class GrahamReport:
     pe: Optional[float]
     pb: Optional[float]
     current_ratio: Optional[float]
+    debt_to_equity: Optional[float]
     graham_number: Optional[float]
     intrinsic_value: Optional[float]      # = graham_number (base estimate)
     margin_of_safety: Optional[float]     # (GN - price) / GN
@@ -136,6 +137,7 @@ def classify(q: RawQuote) -> GrahamReport:
         pe=pe,
         pb=pb,
         current_ratio=cr,
+        debt_to_equity=de,
         graham_number=gn,
         intrinsic_value=gn,
         margin_of_safety=mos,
