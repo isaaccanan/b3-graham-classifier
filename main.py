@@ -198,8 +198,9 @@ def run(tickers: list[str], label_filter: str | None,
         log.info("Summary CSV exported → %s [%s]", out, export_format)
 
     if detail_path:
+        fmt = "google" if export_format == "google-formulas" else export_format
         out = _prefixed_path(detail_path, "detail", export_format)
-        exporter.detail(reports, out, fmt=export_format)
+        exporter.detail(reports, out, fmt=fmt)
         print(f"Detail  CSV saved → {out}  [{exporter.format_description(export_format)}]")
         log.info("Detail CSV exported → %s [%s]", out, export_format)
 

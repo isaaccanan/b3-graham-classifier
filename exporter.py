@@ -65,7 +65,7 @@ FORMATS: dict[str, ExportFormat] = {
     ),
 }
 
-DEFAULT_FORMAT = "google"
+DEFAULT_FORMAT = "google-formulas"
 
 
 # ── public API ────────────────────────────────────────────────────────────────
