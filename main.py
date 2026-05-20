@@ -30,6 +30,7 @@ import ipca as ipca_module
 import menu as interactive_menu
 import statusinvest as si_module
 import validator as val
+import yfinance_source as yf_module
 from tickers import IBOVESPA_TICKERS
 
 # ── logging setup ─────────────────────────────────────────────────────────────
@@ -52,7 +53,7 @@ LABEL_ORDER = clf.LABEL_ORDER
 
 _DISCLAIMER = """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                          INVESTMENT DISCLAIMER                              ║
+║                          INVESTMENT DISCLAIMER                               ║
 ║                                                                              ║
 ║  This tool is for informational and educational purposes only.               ║
 ║  It does NOT constitute financial advice or a recommendation to buy,         ║
@@ -64,7 +65,7 @@ _DISCLAIMER = """
 ║                                                                              ║
 ║  Always consult a qualified financial advisor before making any              ║
 ║  investment decision. Use at your own risk.                                  ║
-║                                                                    MIT © 2026 ║
+║                                                                    MIT © 2026║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -84,8 +85,9 @@ def _fetch_and_validate(ticker: str) -> tuple[clf.GrahamReport, val.ValidationRe
     snap = brapi.fetch_quote(ticker)
     fund = fundamentus.fetch(ticker)
     si   = si_module.fetch(ticker)
+    yf   = yf_module.fetch(ticker)
     cvm  = cvm_module.fetch(ticker)
-    v    = val.validate(snap, fund, si)
+    v    = val.validate(snap, fund, si, yf)
 
     # Apply validated/resolved values back into the quote before classifying
     snap.price = v.price or snap.price
@@ -357,8 +359,9 @@ def main() -> None:
         b_flushed = brapi.flush_cache(targets)
         f_flushed = fundamentus.flush_cache(targets)
         s_flushed = si_module.flush_cache(targets)
+        y_flushed = yf_module.flush_cache(targets)
         c_flushed = cvm_module.flush_cache(targets)
-        all_flushed = sorted(set(b_flushed) | set(f_flushed) | set(s_flushed) | set(c_flushed))
+        all_flushed = sorted(set(b_flushed) | set(f_flushed) | set(s_flushed) | set(y_flushed) | set(c_flushed))
         if all_flushed:
             print(f"Cache flushed for: {', '.join(all_flushed)}")
             log.info("Cache flushed for: %s", all_flushed)
